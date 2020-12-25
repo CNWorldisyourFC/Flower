@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="修改头像"
+        android:textSize="50dp"
+        android:textStyle="bold"
+        />
+
+
+
+
+
+    <ImageView
+        android:id="@+id/modifyAvatarMain_image_avatar"
+        android:layout_height="100dp"
+        android:layout_width="100dp"
+        android:src="@mipmap/ic_launcher_round"/>
+
+
+
+
+    <TextView
+        android:id="@+id/modifyAvatarMain_text_email"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20dp"
+        android:textStyle="bold"
+        android:text="test@test.test"
+        android:inputType="textEmailAddress"/>
+
+
+
+
+
+    <Button
+        android:layout_width="wrap_content"
+        android:gravity="center_horizontal"
+        android:id="@+id/modifyAvatarMain_button_takeFromAlbum"
+        android:layout_height="wrap_content"
+        android:text="相册" />
+
+
+</LinearLayout>

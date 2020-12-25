@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>three.js webgl - cloth simulation</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            background-color: #cce0ff;
+            color: #000;
+        }
+        a {
+            color: #080;
+        }
+    </style>
+<!--    <script src="../js/three.js"></script>-->
+<!--    <script src="../js/OrbitControls.js"></script>-->
+</head>
+
+<body>
+<div id="info">Simple Cloth Simulation<br/>
+    Verlet integration with relaxed constraints<br/>
+</div>
+
+<script type="module">
+
+    import * as THREE from '../js/three.model_inthree.js';
+
+    import Stats from '../js/stats.module.js';
+    import { MTLLoader }  from "https://threejs.org/examples/jsm/loaders/MTLLoader.js";
+    import { OBJLoader } from "https://threejs.org/examples/jsm/loaders/OBJLoader.js";
+    import { OrbitControls } from '../js/OrbitControls_in_threemodel.js';
+
+    /*
+     * Cloth Simulation using a relaxed constraints solver
+     */
+
+    // Suggested Readings
+
+    // Advanced Character Physics by Thomas Jakobsen Character
+    // http://freespace.virgin.net/hugo.elias/models/m_cloth.htm
+    // http://en.wikipedia.org/wiki/Cloth_modeling
+    // http://cg.alexandra.dk/tag/spring-mass-system/
+    // Real-time Cloth Animation http://www.darwin3d.com/gamedev/articles/col0599.pdf
+
+
+    let container, stats;
+    let camera, scene, renderer;
+    let object;
+
+    init();
+    animate( 0 );
+
+    function init() {
+
+        container = document.createElement( 'div' );
+        document.body.appendChild( container );
+
+        // scene
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color( 0xcce0ff );//背景色
+        //scene.fog = new THREE.Fog( 0xcce0ff, 500, 10000 );//雾
+
+        // camera
+
+        camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 1, 10000 );
+        camera.position.set( 1000, 50, 1500 );//初始位置
+
+        // lights
+
+        scene.add( new THREE.AmbientLight( 0x666666 ) );
+
+        const light = new THREE.DirectionalLight( 0xdfebff, 1 );
+        light.position.set( 50, 200, 100 );
+        light.position.multiplyScalar( 1.3 );
+
+        light.castShadow = true;
+        //设置阴影分辨率
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+
+        const d = 300;
+
+        light.shadow.camera.left = - d;
+        light.shadow.camera.right = d;
+        light.shadow.camera.top = d;
+        light.shadow.camera.bottom = - d;
+
+        light.shadow.camera.far = 1000;
+
+        scene.add( light );
+
+        const loader = new THREE.TextureLoader();
+
+        // ground
+
+        const groundTexture = loader.load( '../GrassLand/grasslight-big.jpg' );
+        groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+        groundTexture.repeat.set( 25, 25 );
+        groundTexture.anisotropy = 16;
+        groundTexture.encoding = THREE.sRGBEncoding;
+
+        const groundMaterial = new THREE.MeshLambertMaterial( { map: groundTexture } );
+
+        let mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 20000, 20000 ), groundMaterial );
+        mesh.position.y = - 250;
+        mesh.rotation.x = - Math.PI / 2;
+        mesh.receiveShadow = true;
+        scene.add( mesh );
+
+
+        //Crocus
+
+
+        var material=new THREE.MeshPhongMaterial({
+            color:0x0000ff,
+            specular:0x4488ee,
+            shininess:12
+        });//材质对象（高光效果）
+        scene.add(material);
+
+        var onProgress = function (xhr){
+            if (xhr.lengthComputable){
+                var percentComplete = xhr.loaded / xhr.total * 100;
+                console.log(Math.round(percentComplete, 2) + '% downloaded');
+            }
+        };
+
+        // // 添加操作器
+        // THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+
+        var onError = function (xhr) {};
+
+        var manager = new THREE.LoadingManager();
+        manager.onProgress = function (item, loaded, total){
+            console.log(item, loaded, total);
+        }
+
+        // 创建MTL加载器
+        var MTLloader = new MTLLoader(manager);
+
+        // 创建OBJ加载器
+        var objLoader = new OBJLoader(manager);
+
+        // 设置文件路径
+        MTLloader.setPath('../GrassLand/');
+
+        //  加载MTL文件
+        MTLloader.load('crocus.mtl', function (material) {
+
+            material.preload();
+            //console.log(material);
+
+            // 设置当前加载的纹理
+            objLoader.setMaterials(material);
+            objLoader.setPath('../GrassLand/');
+            objLoader.load('crocus.obj',
+                // onload 函数
+                function (object) {
+
+                    // object.traverse(function (chil   d){
+                    //   if (child instanceof THREE.Mesh){
+                    //     child.material.shininess = 100;
+                    //     child.material.transparent = true;
+                    //   }
+                    // });
+                    object.position.x = 0;
+                    object.position.y = 100;
+                    //缩放
+                    object.scale.set(5, 5, 5);
+
+                    //console.log(object);
+                    object.children[0].geometry.computeBoundingBox();
+                    object.children[0].geometry.center();
+                    // let flower = new THREE.Mesh(object,material);
+                    // flower.position.set( 0, 0, 0 );
+                    // flower.castShadow = true;
+                    // scene.add(flower);
+                    scene.add(object);
+                }, onProgress, onError);
+
+        })
+
+        // renderer
+        //渲染器
+        renderer = new THREE.WebGLRenderer( { antialias: true } );
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+
+        container.appendChild( renderer.domElement );
+
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        renderer.shadowMap.enabled = true;
+
+        // controls
+        const controls = new OrbitControls( camera, renderer.domElement );
+        controls.maxPolarAngle = Math.PI * 0.5;
+        controls.minDistance = 1000;
+        controls.maxDistance = 5000;
+
+        // performance monitor
+
+        stats = new Stats();
+        container.appendChild( stats.dom );
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        //
+
+
+    }
+
+    function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize( window.innerWidth, window.innerHeight );
+
+    }
+
+    function animate( now ) {
+
+        requestAnimationFrame( animate );
+        render();
+        stats.update();
+
+    }
+
+    function render() {
+
+        renderer.render( scene, camera );
+
+    }
+
+</script>
+</body>
+</html>
